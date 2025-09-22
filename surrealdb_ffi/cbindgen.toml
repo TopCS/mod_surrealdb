@@ -9,5 +9,14 @@ expand = []
 clean = true
 
 [export]
-include = ["SurHandle", "surreal_init_runtime", "surreal_connect", "surreal_publish", "surreal_close", "surreal_last_error_code"]
-
+include = [
+  "SurHandle",
+  "surreal_init_runtime",
+  "surreal_connect",
+  "surreal_publish",
+  "surreal_close",
+  "surreal_last_error_code",
+  "surreal_subscribe",
+  "surreal_unsubscribe",
+  "surreal_debug_emit",
+]
