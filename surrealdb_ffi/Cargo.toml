@@ -9,15 +9,16 @@ description = "C ABI wrapper around SurrealDB v3 client for FreeSWITCH modules"
 crate-type = ["cdylib"]
 
 [features]
-# Temporary stub feature to allow building without network/deps
+default = ["stub"]
 stub = []
+real = ["dep:surrealdb", "dep:tokio", "dep:serde_json"]
 
 [dependencies]
-# TODO: Add actual SurrealDB client when wiring real I/O
-# surrealdb = { version = "3", default-features = false }
-# tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+# Real client deps are optional and activated by the `real` feature.
+surrealdb = { version = "1", default-features = false, optional = true }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"], optional = true }
+serde_json = { version = "1", optional = true }
 
 [build-dependencies]
 # Optional: generate headers automatically
 # cbindgen = "0.26"
-
