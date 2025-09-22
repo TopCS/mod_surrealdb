@@ -13,6 +13,7 @@ include = [
   "SurHandle",
   "surreal_init_runtime",
   "surreal_connect",
+  "surreal_connect_with_token",
   "surreal_publish",
   "surreal_close",
   "surreal_last_error_code",

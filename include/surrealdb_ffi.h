@@ -17,6 +17,12 @@ SurHandle* surreal_connect(const char* url,
                            const char* user,
                            const char* pass);
 
+// Token-based connect variant (e.g., Bearer token).
+SurHandle* surreal_connect_with_token(const char* url,
+                                      const char* ns,
+                                      const char* db,
+                                      const char* token);
+
 // Publishes a JSON payload to a table/topic. Returns 0 on success.
 int32_t surreal_publish(SurHandle* handle,
                         const char* table_or_topic,

@@ -45,6 +45,19 @@ pub extern "C" fn surreal_connect(
     Box::into_raw(handle)
 }
 
+/// Token-based connect variant (e.g., Bearer token). Returns handle or NULL.
+#[no_mangle]
+pub extern "C" fn surreal_connect_with_token(
+    url: *const c_char,
+    ns: *const c_char,
+    db: *const c_char,
+    token: *const c_char,
+) -> *mut SurHandle {
+    let _ = (cstr_to_str(url), cstr_to_str(ns), cstr_to_str(db), cstr_to_str(token));
+    let handle = Box::new(SurHandle { is_connected: true, last_error_code: AtomicI32::new(0), callback: Mutex::new(None) });
+    Box::into_raw(handle)
+}
+
 /// Publish a JSON payload to a given table/record or channel.
 /// Returns 0 on success, non-zero on error.
 #[no_mangle]

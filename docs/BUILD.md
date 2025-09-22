@@ -21,7 +21,8 @@
 
 int main() {
   surreal_init_runtime();
-  SurHandle* h = surreal_connect("ws://127.0.0.1:8000", "test", "test", "root", "root");
+  // Password auth
+  SurHandle* h = surreal_connect("wss://127.0.0.1:8000", "test", "test", "root", "root");
   if (!h) return 1;
   int rc = surreal_publish(h, "events", "{\"hello\":\"world\"}");
   surreal_close(h);
@@ -47,4 +48,9 @@ static void on_cmd(const char* topic, const char* json, void* ud) {
 surreal_subscribe(h, "commands", on_cmd, NULL);
 surreal_debug_emit(h, "commands", "{\"do\":\"ping\"}");
 surreal_unsubscribe(h, "commands");
+```
+
+## Token auth
+```c
+SurHandle* h = surreal_connect_with_token("wss://db.example.com:8000", "ns", "db", "<bearer-token>");
 ```
