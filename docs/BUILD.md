@@ -31,3 +31,20 @@ int main() {
 
 Note: The current implementation is a stub. Next step wires real SurrealDB v3 client calls and async runtime.
 
+## Receiving commands (callback API)
+- Register a callback for a topic:
+  - `int32_t surreal_subscribe(SurHandle*, const char* topic, surreal_command_cb cb, void* user_data);`
+  - `int32_t surreal_unsubscribe(SurHandle*, const char* topic);`
+- Stub testing helper (no network):
+  - `int32_t surreal_debug_emit(SurHandle*, const char* topic, const char* json);`
+
+Example:
+```c
+static void on_cmd(const char* topic, const char* json, void* ud) {
+  (void)ud; printf("%s %s\n", topic, json);
+}
+...
+surreal_subscribe(h, "commands", on_cmd, NULL);
+surreal_debug_emit(h, "commands", "{\"do\":\"ping\"}");
+surreal_unsubscribe(h, "commands");
+```
