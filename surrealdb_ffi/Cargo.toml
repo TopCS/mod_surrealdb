@@ -1,0 +1,23 @@
+[package]
+name = "surrealdb_ffi"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "C ABI wrapper around SurrealDB v3 client for FreeSWITCH modules"
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+# Temporary stub feature to allow building without network/deps
+stub = []
+
+[dependencies]
+# TODO: Add actual SurrealDB client when wiring real I/O
+# surrealdb = { version = "3", default-features = false }
+# tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+
+[build-dependencies]
+# Optional: generate headers automatically
+# cbindgen = "0.26"
+
