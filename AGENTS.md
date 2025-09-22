@@ -1,8 +1,9 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- Language: C FreeSWITCH module inspired by `mod_amqp`, targeting SurrealDB v3 for publishing and receiving commands.
-- Source: C files at repo root (e.g., `mod_*/*.c` or `mod_*.c`, `mod_*.h`). Current code mirrors AMQP; SurrealDB integration will live in `mod_surrealdb_*.c`.
+- Language: C FreeSWITCH module, with Rust FFI for SurrealDB v3 I/O.
+- C sources: repo root (e.g., `mod_*.c`, `mod_*.h`). New code should use `mod_surrealdb_*.c`.
+- Rust FFI: `surrealdb_ffi/` produces `libsurrealdb_ffi.so`; C header in `include/`.
 - Build artifacts: `Makefile`, `Makefile.in`, `Makefile.am`.
 - Config examples: FreeSWITCH autoload configs typically in `/etc/freeswitch/autoload_configs/`.
 
@@ -10,9 +11,11 @@
 - `make` — builds the module library.
 - `make clean` — removes build artifacts.
 - `make check` — runs tests if/when added.
+- Rust FFI: `cd surrealdb_ffi && cargo build --release` (stub by default).
+- Enable real client: `cargo build --release --no-default-features --features real`.
 Notes:
-- Must be buildable without FreeSWITCH source tree. Prefer system headers/packages (e.g., `libfreeswitch-dev`, `pkg-config`) and SurrealDB C/C++ client or HTTP/gRPC bindings.
-- Keep external deps optional; gate code with `#ifdef` where reasonable.
+- Must be buildable without FreeSWITCH source tree. Prefer system headers/packages (e.g., `libfreeswitch-dev`, `pkg-config`).
+- Keep external deps optional; gate code with `#ifdef` or feature flags where reasonable.
 
 ## Coding Style & Naming Conventions
 - Indentation: tabs preferred, width 4 (matches existing hints).
@@ -33,4 +36,3 @@ Notes:
 - Ask, document, behave: propose changes, capture decisions in code comments/docs.
 - Commit every change: keep incremental, reviewable commits. If the repo is not yet git-initialized, confirm before running `git init && git add -A && git commit`.
 - Security & Config: do not hardcode credentials; support env vars (e.g., `SURREALDB_URL`, `SURREALDB_NS`, `SURREALDB_DB`, `SURREALDB_AUTH`).
-
