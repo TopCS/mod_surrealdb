@@ -9,6 +9,12 @@
   - Output: `target/release/libsurrealdb_ffi.so` (Linux)
 - Header (optional): `cd surrealdb_ffi && cbindgen --config cbindgen.toml -o ../include/surrealdb_ffi.h`
 
+### Features
+- Default build uses a stub (no network deps).
+- Enable real client wiring when ready:
+  - `cd surrealdb_ffi && cargo build --release --no-default-features --features real`
+  - Requires Rust deps and network access to fetch crates.
+
 ## Link from C
 - Include: `#include "include/surrealdb_ffi.h"`
 - Link flags example:
