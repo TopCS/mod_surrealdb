@@ -1,5 +1,8 @@
 mod_surrealdb — SurrealDB module for FreeSWITCH
 
+Description
+mod_surrealdb connects FreeSWITCH to SurrealDB, enabling you to stream telephony data into a modern document/graph database without bespoke glue. The module can publish real‑time switch events and call detail records (CDRs) into SurrealDB tables using a lightweight Rust FFI client. It is designed to be simple to deploy on systems with packaged FreeSWITCH headers, resilient to transient database issues, and flexible in schema so you can model events and CDRs to your needs. Authentication supports either user/password or JWT token, and configuration lives in a standard FreeSWITCH autoload config. Command execution from SurrealDB back into FreeSWITCH is not embedded yet; instead, a sample Rust worker is included to demonstrate consuming a commands table and invoking `fs_cli` safely.
+
 Overview
 - Publishes FreeSWITCH events and CDRs into SurrealDB via a Rust FFI helper.
 - Buildable outside the FreeSWITCH source tree using system headers (libfreeswitch-dev).
@@ -13,6 +16,18 @@ Build
   - `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release`
   - `cmake --build build -j`
 - Install module: `sudo cmake --install build` (installs to your FreeSWITCH modules dir)
+
+Docker
+- Debian Bookworm builder image:
+  - `docker build -t mod-surrealdb:bookworm -f Dockerfile.debian .`
+  - `docker run --rm -v "$PWD":/src -w /src mod-surrealdb:bookworm scripts/build-deb.sh`
+- Legacy Debian Stretch:
+  - `docker build -t mod-surrealdb:stretch -f Dockerfile.debian9 .`
+  - `docker run --rm -v "$PWD":/src -w /src mod-surrealdb:stretch scripts/build-deb.sh build-stretch`
+- Convenience scripts (detect/mount local FreeSWITCH prefix if available):
+  - `scripts/docker-build-deb.sh` (Bookworm)
+  - `scripts/docker-build-deb-stretch.sh` (Stretch)
+- Artifacts: resulting `.deb` packages are listed under the build directory.
 
 Configuration
 - Copy or edit `conf/autoload_configs/surrealdb.conf.xml` (typically `/etc/freeswitch/autoload_configs/`).
@@ -43,6 +58,21 @@ Commands (SurrealDB -> FreeSWITCH)
   - `CREATE fs_commands SET action='originate', args='{sofia/gateway/gw1/15551234567} &park', status='new';`
   - `CREATE fs_commands SET action='hangup', uuid='UUID', status='new';`
 
+CLI
+- Worker binary: `cmd/surreal_commands_worker/target/release/surreal_commands_worker`.
+- Flags: `--url`, `--ns`, `--db`, `--table`, `--fs-cli`, `--poll-ms` (or env vars below).
+- Env vars: `SURREALDB_URL`, `SURREALDB_NS`, `SURREALDB_DB`, `SURREALDB_USER`, `SURREALDB_PASS`, `SURREALDB_TOKEN`, `COMMANDS_TABLE`, `FS_CLI`, `POLL_MS`.
+- Examples:
+  - `SURREALDB_USER=root SURREALDB_PASS=root surreal_commands_worker --url 127.0.0.1:8000 --ns test --db test --table fs_commands`
+  - `SURREALDB_TOKEN=... surreal_commands_worker --url 127.0.0.1:8000 --ns test --db test --table fs_commands`
+- The worker invokes `fs_cli -x` under the hood. If FreeSWITCH’s event socket is not at the default host/port/password, point `--fs-cli` to a wrapper script that adds `-H/-P/-p`.
+
+Docs
+- See the `docs/` folder for more details:
+  - `docs/quickstart.md` — quick setup and testing.
+  - `docs/BUILD.md` — build, install, and packaging notes.
+  - `docs/commands.md` — commands table format and worker behavior.
+
 Troubleshooting
 - fs_cli connection errors (e.g., `Error Connecting []`): ensure FreeSWITCH event socket is reachable for `fs_cli -x status`. If you need non-default host/port/password, point the worker to a wrapper script via `--fs-cli` that adds `-H/-P/-p`.
 - SurrealDB WS connect errors: pass host:port (no scheme). Server must expose WS /rpc on that port.
@@ -52,6 +82,3 @@ Development
 - Coding style: tabs, K&R braces, public symbols prefixed `mod_surrealdb_`.
 - Tests (when added): `make check` or project-specific test targets.
 - Security: do not hardcode credentials; support env vars (e.g., `SURREALDB_URL`, `SURREALDB_NS`, `SURREALDB_DB`, `SURREALDB_AUTH`).
-
-Status
-- AMQP code has been removed. This repository now focuses on the SurrealDB module and the sample commands worker.
