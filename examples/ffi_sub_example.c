@@ -13,7 +13,8 @@ int main(void) {
         return 1;
     }
 
-    SurHandle* h = surreal_connect("ws://127.0.0.1:8000", "test", "test", "root", "root");
+    // URL format is host:port (no scheme)
+    SurHandle* h = surreal_connect("127.0.0.1:8000", "test", "test", "root", "root");
     if (!h) {
         fprintf(stderr, "connect failed\n");
         return 2;
@@ -32,4 +33,3 @@ int main(void) {
     surreal_close(h);
     return 0;
 }
-

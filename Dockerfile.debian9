@@ -1,0 +1,33 @@
+FROM debian:stretch-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Use archived Stretch repos
+RUN printf '%s\n' \
+    'deb http://archive.debian.org/debian stretch main' \
+    'deb http://archive.debian.org/debian stretch-backports main' \
+    'deb http://archive.debian.org/debian-security stretch/updates main' \
+    > /etc/apt/sources.list \
+ && apt-get -o Acquire::Check-Valid-Until=false -o Acquire::AllowInsecureRepositories=true update \
+ && apt-get install -y --no-install-recommends \
+    ca-certificates wget curl git unzip pkg-config \
+    build-essential \
+    zlib1g-dev libssl-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+# Install a recent CMake (>= 3.18) prebuilt
+ENV CMAKE_VERSION=3.25.2
+RUN cd /tmp \
+ && curl -fsSL -o cmake.tar.gz https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz \
+ && tar -C /opt -xzf cmake.tar.gz \
+ && ln -s /opt/cmake-${CMAKE_VERSION}-linux-x86_64/bin/cmake /usr/local/bin/cmake \
+ && ln -s /opt/cmake-${CMAKE_VERSION}-linux-x86_64/bin/ctest /usr/local/bin/ctest \
+ && ln -s /opt/cmake-${CMAKE_VERSION}-linux-x86_64/bin/cpack /usr/local/bin/cpack \
+ && rm -f /tmp/cmake.tar.gz
+
+# Note: We do not install libfreeswitch-dev here; mount your FS prefix into the container.
+WORKDIR /src
+
+# Default command shows usage
+CMD ["bash", "-lc", "echo 'Usage: docker run --rm -v $PWD:/src -w /src -e FS_PREFIX=/usr/local/freeswitch <image> scripts/build-deb.sh build-stretch' && echo 'If using a custom FreeSWITCH prefix, mount it at /usr/local/freeswitch and set PKG_CONFIG_PATH accordingly.'"]
+

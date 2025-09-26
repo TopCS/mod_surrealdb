@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  surrealdb.conf.xml — sample autoload config for mod_surrealdb
+
+  Configure parameters inside this XML. Either provide username/password
+  or a bearer token. If both are present, the token takes precedence.
+
+  Testing
+    fs_cli -x "load mod_surrealdb"
+    fs_cli -x "surrealdb.publish my_table {\"msg\":\"hello\"}"
+
+  Notes
+  - If the Rust FFI library is not present, the module runs in no-op mode
+    and the publish API returns an explanatory error.
+  - Build the FFI via: (repo)/surrealdb_ffi -> cargo build --release
+  - To bundle the FFI next to the module, configure the CMake build with
+    -DBUNDLE_FFI=ON and reinstall the module.
+-->
+
+<configuration name="surrealdb.conf" description="mod_surrealdb">
+  <settings>
+    <!-- URL format: host:port (no scheme) -->
+    <param name="url" value="127.0.0.1:8000"/>
+    <param name="namespace" value="test"/>
+    <param name="database" value="test"/>
+
+    <!-- Option A: username/password -->
+    <param name="username" value="root"/>
+    <param name="password" value="root"/>
+
+    <!-- Option B: bearer token (overrides username/password if non-empty) -->
+    <param name="token" value=""/>
+
+    <!-- Connect to SurrealDB during module load -->
+    <param name="connect-on-load" value="true"/>
+
+    <!-- Optional: subscribe to command table for control plane -->
+    <param name="enable-commands" value="false"/>
+    <param name="command-table" value="fs_commands"/>
+
+    <!-- Event sink: publish FreeSWITCH events into a SurrealDB table -->
+    <param name="enable-events" value="false"/>
+    <!-- Table to insert event JSON rows into -->
+    <param name="event-table" value="fs_events"/>
+    <!-- Comma-separated list of events or SWITCH_EVENT_ALL. Optional ^subclass, e.g., CUSTOM^sofia::register -->
+    <param name="event-filter" value="SWITCH_EVENT_CHANNEL_CREATE,SWITCH_EVENT_CHANNEL_DESTROY,SWITCH_EVENT_DTMF"/>
+    <!-- Bounded queue capacity for event publishing (events) -->
+    <param name="send-queue-size" value="1000"/>
+    <!-- Circuit breaker interval after queue full (milliseconds) -->
+    <param name="circuit-breaker-ms" value="10000"/>
+
+    <!-- CDR sink: write one row per completed call -->
+    <param name="enable-cdr" value="false"/>
+    <param name="cdr-table" value="fs_cdr"/>
+  </settings>
+</configuration>

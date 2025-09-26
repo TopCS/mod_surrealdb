@@ -20,4 +20,5 @@ include = [
   "surreal_subscribe",
   "surreal_unsubscribe",
   "surreal_debug_emit",
+  "surreal_update",
 ]

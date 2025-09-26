@@ -1,0 +1,57 @@
+mod_surrealdb — SurrealDB module for FreeSWITCH
+
+Overview
+- Publishes FreeSWITCH events and CDRs into SurrealDB via a Rust FFI helper.
+- Buildable outside the FreeSWITCH source tree using system headers (libfreeswitch-dev).
+- Commands consumer is currently external: a sample Rust worker is provided under `cmd/surreal_commands_worker` to execute fs_cli commands from a SurrealDB table.
+
+Build
+- Prereqs: `libfreeswitch-dev`, `pkg-config`, `cmake`, Rust toolchain (for the FFI helper).
+- Build FFI (stub by default): `cd surrealdb_ffi && cargo build --release`
+  - Real client: `cargo build --release --no-default-features --features real`
+- Build module (CMake):
+  - `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release`
+  - `cmake --build build -j`
+- Install module: `sudo cmake --install build` (installs to your FreeSWITCH modules dir)
+
+Configuration
+- Copy or edit `conf/autoload_configs/surrealdb.conf.xml` (typically `/etc/freeswitch/autoload_configs/`).
+- Core settings:
+  - `url` host:port of SurrealDB (no scheme), e.g. `127.0.0.1:8000`.
+  - `namespace` and `database`, plus either `user`/`pass` or `token`.
+  - `connect-on-load` to open the connection at module load.
+- Event sink (FreeSWITCH -> SurrealDB):
+  - `enable-events=true`, `event-table=fs_events`, `event-filter=SWITCH_EVENT_ALL` (or a comma list).
+  - Optional backpressure: `send-queue-size`, `circuit-breaker-ms`.
+- CDR sink:
+  - `enable-cdr=true`, `cdr-table=fs_cdr`.
+
+Commands (SurrealDB -> FreeSWITCH)
+- Status: not implemented inside the module yet. Use the external worker as reference.
+- Sample worker: `cmd/surreal_commands_worker` (Rust, connects via WS and runs `fs_cli -x ...`).
+  - Build: `cd cmd/surreal_commands_worker && cargo build --release`
+  - Run: `SURREALDB_USER=root SURREALDB_PASS=root cmd/surreal_commands_worker/target/release/surreal_commands_worker --url 127.0.0.1:8000 --ns test --db test --table fs_commands`
+- Table schema is flexible; worker expects rows with at least `status='new'` and an `action`:
+  - `api`: `cmd`, optional `args`
+  - `originate`: `args` (full originate string)
+  - `hangup`: `uuid`, optional `cause`
+  - `bridge`: `uuid_a`, `uuid_b`
+  - `playback`: `uuid`, `file`, optional `legs` (aleg|bleg|both)
+- Example inserts:
+  - `CREATE fs_commands SET action='api', cmd='status', status='new';`
+  - `CREATE fs_commands SET action='api', cmd='show', args='calls count', status='new';`
+  - `CREATE fs_commands SET action='originate', args='{sofia/gateway/gw1/15551234567} &park', status='new';`
+  - `CREATE fs_commands SET action='hangup', uuid='UUID', status='new';`
+
+Troubleshooting
+- fs_cli connection errors (e.g., `Error Connecting []`): ensure FreeSWITCH event socket is reachable for `fs_cli -x status`. If you need non-default host/port/password, point the worker to a wrapper script via `--fs-cli` that adds `-H/-P/-p`.
+- SurrealDB WS connect errors: pass host:port (no scheme). Server must expose WS /rpc on that port.
+- FFI not found: module loads in no-op mode and logs a warning. Build the FFI and reinstall the module.
+
+Development
+- Coding style: tabs, K&R braces, public symbols prefixed `mod_surrealdb_`.
+- Tests (when added): `make check` or project-specific test targets.
+- Security: do not hardcode credentials; support env vars (e.g., `SURREALDB_URL`, `SURREALDB_NS`, `SURREALDB_DB`, `SURREALDB_AUTH`).
+
+Status
+- AMQP code has been removed. This repository now focuses on the SurrealDB module and the sample commands worker.

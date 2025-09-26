@@ -1,0 +1,15 @@
+FROM debian:bookworm-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates wget git curl \
+    build-essential cmake pkg-config \
+    libfreeswitch-dev \
+    rustc cargo \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+
+CMD ["bash", "-lc", "echo 'Usage: docker run --rm -v $PWD:/src -w /src <image> scripts/build-deb.sh build' && pkg-config --cflags freeswitch || true"]
+

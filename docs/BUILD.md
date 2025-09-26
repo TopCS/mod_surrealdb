@@ -28,7 +28,8 @@
 int main() {
   surreal_init_runtime();
   // Password auth
-  SurHandle* h = surreal_connect("wss://127.0.0.1:8000", "test", "test", "root", "root");
+  // URL format is host:port (no scheme)
+  SurHandle* h = surreal_connect("127.0.0.1:8000", "test", "test", "root", "root");
   if (!h) return 1;
   int rc = surreal_publish(h, "events", "{\"hello\":\"world\"}");
   surreal_close(h);
@@ -58,5 +59,6 @@ surreal_unsubscribe(h, "commands");
 
 ## Token auth
 ```c
-SurHandle* h = surreal_connect_with_token("wss://db.example.com:8000", "ns", "db", "<bearer-token>");
+// URL format is host:port (no scheme)
+SurHandle* h = surreal_connect_with_token("db.example.com:8000", "ns", "db", "<bearer-token>");
 ```

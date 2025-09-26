@@ -1,0 +1,4 @@
+#V2
+CREATE fs_commands SET\n  action='api', cmd='status', args=null, status='new'
+SELECT * FROM test LIMIT 5;
+LIVE SELECT * FROM fs_commands;
