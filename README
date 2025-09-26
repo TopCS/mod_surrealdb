@@ -82,3 +82,6 @@ Development
 - Coding style: tabs, K&R braces, public symbols prefixed `mod_surrealdb_`.
 - Tests (when added): `make check` or project-specific test targets.
 - Security: do not hardcode credentials; support env vars (e.g., `SURREALDB_URL`, `SURREALDB_NS`, `SURREALDB_DB`, `SURREALDB_AUTH`).
+
+License
+- MIT. See `LICENSE` for details.
