@@ -8,7 +8,7 @@ use tokio::process::Command;
 use tokio::time::sleep;
 use tracing::{error, info, warn};
 
-use surrealdb::engine::remote::ws::{Client, Ws};
+use surrealdb::engine::remote::ws::Ws;
 use surrealdb::opt::auth::Root;
 use surrealdb::value::{from_value, Value as SurValue};
 use surrealdb::{Action, RecordId, Surreal};
@@ -52,9 +52,9 @@ fn normalize_ws_hostport(url: &str) -> String {
     u.to_string()
 }
 
-async fn connect(opts: &Opts) -> Result<Surreal<Client>> {
+async fn connect(opts: &Opts) -> Result<Surreal<Ws>> {
     let hostport = normalize_ws_hostport(&opts.url);
-    let db = Surreal::new::<Ws>(&hostport)
+    let db = Surreal::new::<Ws>(&format!("ws://{}", hostport))
         .await
         .with_context(|| format!("ws connect failed (to {})", hostport))?;
     if let Some(token) = &opts.token {
@@ -96,13 +96,13 @@ async fn fs_exec(fs_cli: &str, cmd: &str, args: Option<&str>) -> Result<String> 
     }
 }
 
-async fn claim(db: &Surreal<Client>, table: &str, key: &str) -> Result<()> {
+async fn claim(db: &Surreal<Ws>, table: &str, key: &str) -> Result<()> {
     let sql = format!("UPDATE {}:{} SET status = 'processing', claimed_at = time::now()", table, key);
     db.query(sql).await.context("claim update failed")?;
     Ok(())
 }
 
-async fn ack(db: &Surreal<Client>, table: &str, key: &str, ok: bool, result: &str) -> Result<()> {
+async fn ack(db: &Surreal<Ws>, table: &str, key: &str, ok: bool, result: &str) -> Result<()> {
     let safe = result.replace('\n', " ").replace('\r', " ");
     let patch = json!({
         "status": if ok { "done" } else { "failed" },
@@ -114,7 +114,7 @@ async fn ack(db: &Surreal<Client>, table: &str, key: &str, ok: bool, result: &st
     Ok(())
 }
 
-async fn handle_row(opts: &Opts, db: &Surreal<Client>, row: CmdRow) -> Result<()> {
+async fn handle_row(opts: &Opts, db: &Surreal<Ws>, row: CmdRow) -> Result<()> {
     let tb = row.id.table().to_string();
     let key: String = row.id.key().clone().try_into().map_err(|_| anyhow!("id key not string-like"))?;
     claim(db, &tb, &key).await.ok();
@@ -170,7 +170,7 @@ async fn handle_row(opts: &Opts, db: &Surreal<Client>, row: CmdRow) -> Result<()
     Ok(())
 }
 
-async fn live_loop(opts: &Opts, db: &Surreal<Client>) -> Result<()> {
+async fn live_loop(opts: &Opts, db: &Surreal<Ws>) -> Result<()> {
     info!(table = %opts.table, "starting LIVE feed");
     let mut stream = db
         .select::<Vec<CmdRow>>(&opts.table)
@@ -187,7 +187,7 @@ async fn live_loop(opts: &Opts, db: &Surreal<Client>) -> Result<()> {
     Err(anyhow!("live stream ended"))
 }
 
-async fn poll_loop(opts: &Opts, db: &Surreal<Client>) -> Result<()> {
+async fn poll_loop(opts: &Opts, db: &Surreal<Ws>) -> Result<()> {
     info!(table = %opts.table, every_ms = %opts.poll_ms, "starting POLL loop");
     loop {
         let sql = format!(

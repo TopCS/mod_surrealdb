@@ -206,7 +206,7 @@ mod api {
     use std::sync::atomic::AtomicBool;
 
     use surrealdb::Surreal;
-    use surrealdb::engine::remote::ws::{Client, Ws};
+    use surrealdb::engine::remote::ws::Ws;
     use surrealdb::opt::auth::Root;
 
     static RUNTIME: OnceLock<Runtime> = OnceLock::new();
@@ -242,7 +242,7 @@ mod api {
     pub struct SurHandle {
         last_error_code: AtomicI32,
         callback: Mutex<Option<(SurCommandCb, *mut c_void)>>,
-        client: Option<Surreal<Client>>,
+        client: Option<Surreal<Ws>>,
         url: String,
         ns: String,
         db: String,
@@ -292,11 +292,11 @@ mod api {
         u.to_string()
     }
 
-    fn open_client(url: &str, ns: &str, db: &str, auth: &Auth) -> Result<Surreal<Client>, ()> {
+    fn open_client(url: &str, ns: &str, db: &str, auth: &Auth) -> Result<Surreal<Ws>, ()> {
         let url = normalize_ws_url(url);
         let rt = match RUNTIME.get() { Some(rt) => rt, None => { set_err(-101); return Err(()); } };
         rt.block_on(async move {
-            let dbh = match Surreal::new::<Ws>(&url).await {
+            let dbh = match Surreal::new::<Ws>(&format!("ws://{}", url)).await {
                 Ok(v) => v,
                 Err(_) => { set_err(-102); return Err(()); }
             };
