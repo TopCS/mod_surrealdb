@@ -1,19 +1,19 @@
-mod_surrealdb — SurrealDB 3.1 module for FreeSWITCH
+mod_surrealdb — SurrealDB 3.2 module for FreeSWITCH
 
 Description
-mod_surrealdb connects FreeSWITCH to SurrealDB 3.1, enabling you to stream telephony data into a modern document/graph database without bespoke glue. The module can publish real‑time switch events and call detail records (CDRs) into SurrealDB tables using a lightweight Rust FFI client. It is designed to be simple to deploy on systems with packaged FreeSWITCH headers, resilient to transient database issues, and flexible in schema so you can model events and CDRs to your needs. Authentication supports either user/password or JWT token, and configuration lives in a standard FreeSWITCH autoload config. Command execution from SurrealDB back into FreeSWITCH is not embedded yet; instead, a sample Rust worker is included to demonstrate consuming a commands table and invoking `fs_cli` safely.
+mod_surrealdb connects FreeSWITCH to SurrealDB 3.2, enabling you to stream telephony data into a modern document/graph database without bespoke glue. The module can publish real‑time switch events and call detail records (CDRs) into SurrealDB tables using a lightweight Rust FFI client. It is designed to be simple to deploy on systems with packaged FreeSWITCH headers, resilient to transient database issues, and flexible in schema so you can model events and CDRs to your needs. Authentication supports either user/password or JWT token, and configuration lives in a standard FreeSWITCH autoload config. Command execution from SurrealDB back into FreeSWITCH is not embedded yet; instead, a sample Rust worker is included to demonstrate consuming a commands table and invoking `fs_cli` safely.
 
 Overview
-- Publishes FreeSWITCH events and CDRs into SurrealDB 3.1 via a Rust FFI helper.
+- Publishes FreeSWITCH events and CDRs into SurrealDB 3.2 via a Rust FFI helper.
 - Buildable outside the FreeSWITCH source tree using system headers (libfreeswitch-dev).
 - Commands consumer is currently external: a sample Rust worker is provided under `cmd/surreal_commands_worker` to execute fs_cli commands from a SurrealDB table.
-- Compatible with SurrealDB 3.1.x features including DiskANN (HNSW+DiskANN hybrid vector search) and authlimit for fine-grained access control.
+- Compatible with SurrealDB 3.2.x features including DiskANN (HNSW+DiskANN hybrid vector search) and authlimit for fine-grained access control.
 
 Build
 - Prereqs: `libfreeswitch-dev`, `pkg-config`, `cmake`, Rust toolchain (for the FFI helper).
   - The real FFI client uses the SurrealDB Rust SDK `3.2.0`, whose dependency graph requires Rust `1.94` or newer.
 - Build FFI (stub by default): `cd surrealdb_ffi && cargo build --release`
-  - Real client (3.1): `cargo build --release --no-default-features --features real`
+  - Real client (3.2): `cargo build --release --no-default-features --features real`
 - Build module (CMake):
   - `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release`
   - `cmake --build build -j`
