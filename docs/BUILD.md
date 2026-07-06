@@ -2,6 +2,7 @@
 
 ## Prereqs
 - Rust toolchain (`rustup`, `cargo`) installed.
+  - The real client uses the SurrealDB Rust SDK `3.2.0`, which requires Rust `1.94` or newer.
 - Optional: `cbindgen` if you want to regenerate the header.
 
 ## Build
@@ -11,7 +12,7 @@
 
 ### Features
 - Default build uses a stub (no network deps).
-- Enable real client wiring when ready:
+- Enable real client wiring:
   - `cd surrealdb_ffi && cargo build --release --no-default-features --features real`
   - Requires Rust deps and network access to fetch crates.
 
@@ -37,7 +38,13 @@ int main() {
 }
 ```
 
-Note: The current implementation is a stub. Next step wires real SurrealDB v3 client calls and async runtime.
+Install or refresh `libsurrealdb_ffi.so` after rebuilding it:
+
+```sh
+sudo scripts/install-ffi.sh
+```
+
+FreeSWITCH loads the module and FFI library together. If `mod_surrealdb.so` was rebuilt but an older `libsurrealdb_ffi.so` is still installed, module loading can fail with an undefined symbol error.
 
 ## Receiving commands (callback API)
 - Register a callback for a topic:

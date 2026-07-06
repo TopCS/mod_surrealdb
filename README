@@ -11,12 +11,15 @@ Overview
 
 Build
 - Prereqs: `libfreeswitch-dev`, `pkg-config`, `cmake`, Rust toolchain (for the FFI helper).
+  - The real FFI client uses the SurrealDB Rust SDK `3.2.0`, whose dependency graph requires Rust `1.94` or newer.
 - Build FFI (stub by default): `cd surrealdb_ffi && cargo build --release`
   - Real client (3.1): `cargo build --release --no-default-features --features real`
 - Build module (CMake):
   - `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release`
   - `cmake --build build -j`
-- Install module: `sudo cmake --install build` (installs to your FreeSWITCH modules dir)
+- Install module: `sudo cmake --install build` (installs to your FreeSWITCH modules dir).
+- Install or refresh the FFI library after rebuilding it: `sudo scripts/install-ffi.sh`.
+  FreeSWITCH loads `mod_surrealdb.so` and `libsurrealdb_ffi.so` together; stale copies can cause undefined symbol errors at module load.
 
 Docker
 - Debian Bookworm builder image:
@@ -78,6 +81,7 @@ Troubleshooting
 - fs_cli connection errors (e.g., `Error Connecting []`): ensure FreeSWITCH event socket is reachable for `fs_cli -x status`. If you need non-default host/port/password, point the worker to a wrapper script via `--fs-cli` that adds `-H/-P/-p`.
 - SurrealDB WS connect errors: pass host:port (no scheme). Server must expose WS /rpc on that port.
 - FFI not found: module loads in no-op mode and logs a warning. Build the FFI and reinstall the module.
+- Undefined symbol while loading `mod_surrealdb`: rebuild and reinstall both the module and `libsurrealdb_ffi.so`. The module and FFI library must come from compatible builds.
 
 Development
 - Coding style: tabs, K&R braces, public symbols prefixed `mod_surrealdb_`.
