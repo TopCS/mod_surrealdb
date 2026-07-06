@@ -2,16 +2,16 @@ use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use futures_util::stream::StreamExt;
 use serde::Deserialize;
-use serde_json::{json, Value as JsonValue};
+use serde_json::json;
 use std::time::Duration;
 use tokio::process::Command;
 use tokio::time::sleep;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
-use surrealdb::engine::remote::ws::Ws;
+use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::opt::auth::Root;
-use surrealdb::value::{from_value, Value as SurValue};
-use surrealdb::{Action, RecordId, Surreal};
+use surrealdb::types::{Action, RecordId, ToSql, Value as SurValue};
+use surrealdb::Surreal;
 
 #[derive(Debug, Clone, Parser)]
 #[command(about = "SurrealDB -> FreeSWITCH commands worker", version)]
@@ -52,9 +52,9 @@ fn normalize_ws_hostport(url: &str) -> String {
     u.to_string()
 }
 
-async fn connect(opts: &Opts) -> Result<Surreal<Ws>> {
+async fn connect(opts: &Opts) -> Result<Surreal<Client>> {
     let hostport = normalize_ws_hostport(&opts.url);
-    let db = Surreal::new::<Ws>(&format!("ws://{}", hostport))
+    let db = Surreal::new::<Ws>(&hostport)
         .await
         .with_context(|| format!("ws connect failed (to {})", hostport))?;
     if let Some(token) = &opts.token {
@@ -62,7 +62,7 @@ async fn connect(opts: &Opts) -> Result<Surreal<Ws>> {
     } else {
         let u = opts.user.clone().ok_or_else(|| anyhow!("missing user"))?;
         let p = opts.pass.clone().ok_or_else(|| anyhow!("missing pass"))?;
-        db.signin(Root { username: &u, password: &p })
+        db.signin(Root { username: u, password: p })
             .await
             .context("signin failed")?;
     }
@@ -96,13 +96,13 @@ async fn fs_exec(fs_cli: &str, cmd: &str, args: Option<&str>) -> Result<String> 
     }
 }
 
-async fn claim(db: &Surreal<Ws>, table: &str, key: &str) -> Result<()> {
+async fn claim(db: &Surreal<Client>, table: &str, key: &str) -> Result<()> {
     let sql = format!("UPDATE {}:{} SET status = 'processing', claimed_at = time::now()", table, key);
     db.query(sql).await.context("claim update failed")?;
     Ok(())
 }
 
-async fn ack(db: &Surreal<Ws>, table: &str, key: &str, ok: bool, result: &str) -> Result<()> {
+async fn ack(db: &Surreal<Client>, table: &str, key: &str, ok: bool, result: &str) -> Result<()> {
     let safe = result.replace('\n', " ").replace('\r', " ");
     let patch = json!({
         "status": if ok { "done" } else { "failed" },
@@ -114,9 +114,9 @@ async fn ack(db: &Surreal<Ws>, table: &str, key: &str, ok: bool, result: &str) -
     Ok(())
 }
 
-async fn handle_row(opts: &Opts, db: &Surreal<Ws>, row: CmdRow) -> Result<()> {
-    let tb = row.id.table().to_string();
-    let key: String = row.id.key().clone().try_into().map_err(|_| anyhow!("id key not string-like"))?;
+async fn handle_row(opts: &Opts, db: &Surreal<Client>, row: CmdRow) -> Result<()> {
+    let tb = row.id.table.to_string();
+    let key = row.id.key.to_sql();
     claim(db, &tb, &key).await.ok();
 
     let action = row.action.unwrap_or_default().to_ascii_lowercase();
@@ -170,24 +170,24 @@ async fn handle_row(opts: &Opts, db: &Surreal<Ws>, row: CmdRow) -> Result<()> {
     Ok(())
 }
 
-async fn live_loop(opts: &Opts, db: &Surreal<Ws>) -> Result<()> {
+async fn live_loop(opts: &Opts, db: &Surreal<Client>) -> Result<()> {
     info!(table = %opts.table, "starting LIVE feed");
     let mut stream = db
-        .select::<Vec<CmdRow>>(&opts.table)
+        .select::<Vec<SurValue>>(&opts.table)
         .live()
         .await
         .context("live start failed")?;
     while let Some(item) = stream.next().await {
-        let notif: surrealdb::Notification<CmdRow> = match item { Ok(n) => n, Err(e) => { warn!("live notif error: {}", e); continue; } };
+        let notif: surrealdb::Notification<SurValue> = match item { Ok(n) => n, Err(e) => { warn!("live notif error: {}", e); continue; } };
         if notif.action != Action::Create && notif.action != Action::Update { continue; }
-        let row: CmdRow = notif.data;
+        let row: CmdRow = CmdRow::deserialize(notif.data).map_err(|e| anyhow!("live row decode failed: {}", e))?;
         if !matches!(row.status.as_deref(), Some(s) if s.eq_ignore_ascii_case("new")) { continue; }
         handle_row(opts, db, row).await.ok();
     }
     Err(anyhow!("live stream ended"))
 }
 
-async fn poll_loop(opts: &Opts, db: &Surreal<Ws>) -> Result<()> {
+async fn poll_loop(opts: &Opts, db: &Surreal<Client>) -> Result<()> {
     info!(table = %opts.table, every_ms = %opts.poll_ms, "starting POLL loop");
     loop {
         let sql = format!(
@@ -199,7 +199,7 @@ async fn poll_loop(opts: &Opts, db: &Surreal<Ws>) -> Result<()> {
                 Ok(list) => {
                     if !list.is_empty() { info!(count=list.len(), table = %opts.table, "fetched new rows"); }
                     for v in list {
-                        if let Ok(row) = from_value::<CmdRow>(v) { handle_row(opts, db, row).await.ok(); }
+                        if let Ok(row) = CmdRow::deserialize(v) { handle_row(opts, db, row).await.ok(); }
                     }
                 }
                 Err(e) => warn!("decode failed: {}", e),

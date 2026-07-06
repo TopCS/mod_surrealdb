@@ -302,7 +302,7 @@ mod api {
             };
             match auth {
                 Auth::UserPass { user, pass } => {
-                    if dbh.signin(Root { username: &user, password: &pass }).await.is_err() { set_err(-103); return Err(()); }
+                    if dbh.signin(Root { username: user.clone(), password: pass.clone() }).await.is_err() { set_err(-103); return Err(()); }
                 }
                 Auth::Token(token) => {
                     if dbh.authenticate(token).await.is_err() { set_err(-104); return Err(()); }
@@ -477,10 +477,8 @@ mod api {
         let table_stream = table.clone();
         let join = RUNTIME.get().unwrap().spawn(async move {
             use futures::StreamExt;
-            use surrealdb::Action;
-            use surrealdb::RecordId;
-            use surrealdb::value::{from_value as from_sur_value, Value as SurValue};
-            use std::convert::TryInto;
+            use serde::Deserialize;
+            use surrealdb::types::{Action, RecordId, ToSql, Value as SurValue};
 
             log_info(&format!("subscribe loop starting on {} (LIVE)", table_stream));
             let mut client = open_client(&url, &ns, &db, &auth).ok();
@@ -509,12 +507,12 @@ mod api {
 
                     // Serialize to JSON for callback shaping
                     let sur_val: SurValue = notif.data.clone();
-                    let mut json = match serde_json::to_value(&sur_val) { Ok(v) => v, Err(_) => serde_json::json!({}) };
+                    let mut json = match serde_json::to_value(sur_val.clone().into_json_value()) { Ok(v) => v, Err(_) => serde_json::json!({}) };
 
                     // Extract id + status using typed conversion for reliability
                     #[derive(serde::Deserialize)]
                     struct IdOnly { id: RecordId, status: Option<String> }
-                    let idonly: IdOnly = match from_sur_value::<IdOnly>(sur_val.clone()) {
+                    let idonly: IdOnly = match IdOnly::deserialize(sur_val.clone()) {
                         Ok(v) => v,
                         Err(e) => { log_info(&format!("live could not parse id/status on {}: {}", table_stream, e)); continue; }
                     };
@@ -522,12 +520,8 @@ mod api {
                     if let Some(st) = idonly.status.as_deref() { if !st.eq_ignore_ascii_case("new") { continue; } } else { continue; }
 
                     // Build id string as table:key (bare key for claim/update API)
-                    let tb = idonly.id.table().to_string();
-                    let key: Result<String, _> = idonly.id.key().clone().try_into();
-                    let key = match key { Ok(s) => s, Err(_) => {
-                        log_info(&format!("live could not stringify id key for {}; skipping", table_stream));
-                        continue;
-                    }};
+                    let tb = idonly.id.table.to_string();
+                    let key = idonly.id.key.to_sql();
                     let id_str = key;
                     // Claim the record
                     let claim = format!("UPDATE {}:{} SET status = 'processing', claimed_at = time::now()", table_stream, id_str);

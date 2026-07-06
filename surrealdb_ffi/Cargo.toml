@@ -16,7 +16,7 @@ real = ["dep:surrealdb", "dep:tokio", "dep:serde_json", "dep:futures", "dep:serd
 
 [dependencies]
 # Real client deps are optional and activated by the `real` feature.
-surrealdb = { version = "3.1", default-features = false, features = ["protocol-ws"], optional = true }
+surrealdb = { version = "=3.2.0", default-features = true, optional = true }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"], optional = true }
 serde_json = { version = "1", optional = true }
 futures = { version = "0.3", optional = true }
