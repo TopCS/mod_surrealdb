@@ -22,6 +22,7 @@ mod api {
     }
 
     static LOGGER: OnceLock<Mutex<Option<(SurLogCb, usize)>>> = OnceLock::new();
+    static LAST_ERR: AtomicI32 = AtomicI32::new(0);
 
     fn cstr_to_str<'a>(ptr: *const c_char) -> Option<&'a str> {
         if ptr.is_null() { return None; }
@@ -72,8 +73,6 @@ mod api {
     pub extern "C" fn surreal_init_runtime() -> c_int { 0 }
 
     #[no_mangle]
-    #[no_mangle]
-    #[no_mangle]
     pub extern "C" fn surreal_connect(url: *const c_char, ns: *const c_char, db: *const c_char, user: *const c_char, pass: *const c_char) -> *mut SurHandle {
         let url = match cstr_to_str(url) { Some(s) => s, None => return std::ptr::null_mut() };
         let _ = (cstr_to_str(ns), cstr_to_str(db), cstr_to_str(user), cstr_to_str(pass));
@@ -110,6 +109,9 @@ mod api {
 
     #[no_mangle]
     pub extern "C" fn surreal_last_error_code(handle: *mut SurHandle) -> c_int { if handle.is_null() { return -1; } let h = unsafe { &*handle }; h.last_error_code.load(Ordering::Relaxed) }
+
+    #[no_mangle]
+    pub extern "C" fn surreal_last_error_global() -> c_int { LAST_ERR.load(Ordering::Relaxed) }
 
     #[no_mangle]
     pub extern "C" fn surreal_subscribe(handle: *mut SurHandle, _topic: *const c_char, cb: SurCommandCb, user_data: *mut c_void) -> c_int {
